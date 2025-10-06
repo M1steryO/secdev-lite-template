@@ -1,86 +1,57 @@
-# S03 - Шаблон реестра NFR (Given-When-Then)
+# S03 - NFR (Given-When-Then)
 
 Этот файл - рабочий **реестр NFR** на семинаре.
-
 Заполняйте его у себя в репозитории в: `SEMINARS/S03/S03_register.md`.
 
 ---
 
 ## Поля реестра (data dictionary)
 
-***ID** - короткий идентификатор, например `NFR-001`.
-
-***User Story / Feature** - к какой истории/фиче относится требование (ссылка допустима).
-
-***Category** - выберите из банка (напр.: `Performance`, `Security-AuthZ/RBAC`, `RateLimiting`, `Privacy/PII`, `Observability/Logging`, …).
-
-***Requirement (NFR)** - *измеримое* требование (числа/пороги/границы действия).
-
-***Rationale / Risk** - зачем это нужно, какой риск/ценность покрываем.
-
-***Acceptance (G-W-T)** - проверяемая формулировка: *Given … When … Then …*.
-
-***Evidence (test/log/scan/policy)** - чем подтвердим выполнение (тест, лог-шаблон, сканер, политика).
-
-***Trace (issue/link)** - ссылка на задачу, обсуждение, артефакт.
-
-***Owner** - ответственный.
-
-***Status** - `Draft` | `Proposed` | `Approved` | `Implemented` | `Verified`.
-
-***Priority** - `P1 - High` | `P2 - Medium` | `P3 - Low`.
-
-***Severity** - `S1 - Critical` | `S2 - Major` | `S3 - Minor`.
-
-***Tags** - произвольные метки (через запятую).
+* **ID** - короткий идентификатор, например `NFR-001`.
+* **User Story / Feature** - к какой истории/фиче относится требование (ссылка допустима).
+* **Category** - выберите из банка (напр.: `Performance`, `Security-AuthZ/RBAC`, `RateLimiting`, `Privacy/PII`, `Observability/Logging`, …).
+* **Requirement (NFR)** - *измеримое* требование (числа/пороги/границы действия).
+* **Rationale / Risk** - зачем это нужно, какой риск/ценность покрываем.
+* **Acceptance (G-W-T)** - проверяемая формулировка: *Given … When … Then …*.
+* **Evidence (test/log/scan/policy)** - чем подтвердим выполнение (тест, лог-шаблон, сканер, политика).
+* **Trace (issue/link)** - ссылка на задачу, обсуждение, артефакт.
+* **Owner** - ответственный.
+* **Status** - `Draft` | `Proposed` | `Approved` | `Implemented` | `Verified`.
+* **Priority** - `P1 - High` | `P2 - Medium` | `P3 - Low`.
+* **Severity** - `S1 - Critical` | `S2 - Major` | `S3 - Minor`.
+* **Tags** - произвольные метки (через запятую).
 
 ---
 
 ## Таблица реестра
 
-| ID      | User Story / Feature      | Category                 | Requirement (NFR)                                                   | Rationale / Risk                     | Acceptance (G-W-T)                                                                                                    | Evidence (test/log/scan/policy)               | Trace (issue/link) | Owner  | Status   | Priority    | Severity   | Tags              |
-
-| ------- | ------------------------- | ------------------------ | ------------------------------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------ | ------ | -------- | ----------- | ---------- | ----------------- |
-
-| NFR-001 | As a user I upload avatar | Security-InputValidation | Reject payloads >1 MiB; MIME из allowlist; **extra** поля запрещены | Защита от DoS/грязных входных данных | **Given** тело 2 MiB и неизвестные поля`<br>`**When** POST `/api/files/avatar<br>`**Then** 413 с RFC7807 + запрет extra | test: `e2e-upload-limit`; policy: schema/size | #123               | team-a | Proposed | P2 - Medium | S2 - Major | limits,validation |
-
-| NFR-002 | As a client I call /api/* | Performance              | P95 ≤ 300 ms при 50 RPS в течение 5 мин                             | UX/SLO                               | **Given** сервис здоров`<br>`**When** 50 RPS на `/api/*` 5 минут`<br>`**Then** P95 ≤ 300 ms; error rate ≤ 1%              | test: `load-50rps`; log: latency quantiles    | #124               | team-a | Draft    | P1 - High   | S2 - Major | perf,slo          |
+| ID      | User Story / Feature      | Category                 | Requirement (NFR)                                                                       | Rationale / Risk                                                 | Acceptance (G-W-T)                                                                                                                                                        | Evidence (test/log/scan/policy)                | Trace (issue/link) | Owner  | Status   | Priority    | Severity   | Tags              |
+| ------- | ------------------------- | ------------------------ | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------ | ------ | -------- | ----------- | ---------- | ----------------- |
+| NFR-001 | As a user I upload avatar | Security-InputValidation | Reject payloads >1 MiB; MIME из allowlist;**extra** поля запрещены | Защита от DoS/грязных входных данных | **Given** тело 2 MiB и неизвестные поля `<br>`**When** POST `/api/files/avatar<br>`**Then** 413 с RFC7807 + запрет extra | test:`e2e-upload-limit`; policy: schema/size | #123               | team-a | Proposed | P2 - Medium | S2 - Major | limits,validation |
+| NFR-002 | As a client I call /api/* | Performance              | P95 ≤ 300 ms при 50 RPS в течение 5 мин                                  | UX/SLO                                                           | **Given** сервис здоров `<br>`**When** 50 RPS на `/api/*` 5 минут `<br>`**Then** P95 ≤ 300 ms; error rate ≤ 1%               | test:`load-50rps`; log: latency quantiles    | #124               | team-a | Draft    | P1 - High   | S2 - Major | perf,slo          |
 
 > Продолжайте ниже добавлять строки до достижения **8-10 NFR** (или больше, если нужно):
 
-| ID | User Story / Feature | Category | Requirement (NFR) | Rationale / Risk | Acceptance (G-W-T) | Evidence (test/log/scan/policy) | Trace (issue/link) | Owner | Status | Priority    | Severity   | Tags |
-
-| -- | -------------------- | -------- | ----------------- | ---------------- | ------------------ | ------------------------------- | ------------------ | ----- | ------ | ----------- | ---------- | ---- |
-
-|    |                      |          |                   |                  |                    |                                 |                    |       | Draft  | P2 - Medium | S2 - Major |      |
-
-|    |                      |          |                   |                  |                    |                                 |                    |       | Draft  | P2 - Medium | S2 - Major |      |
-
-|    |                      |          |                   |                  |                    |                                 |                    |       | Draft  | P2 - Medium | S2 - Major |      |
-
-|    |                      |          |                   |                  |                    |                                 |                    |       | Draft  | P2 - Medium | S2 - Major |      |
-
-|    |                      |          |                   |                  |                    |                                 |                    |       | Draft  | P2 - Medium | S2 - Major |      |
-
-|    |                      |          |                   |                  |                    |                                 |                    |       | Draft  | P2 - Medium | S2 - Major |      |
-
-|    |                      |          |                   |                  |                    |                                 |                    |       | Draft  | P2 - Medium | S2 - Major |      |
-
-|    |                      |          |                   |                  |                    |                                 |                    |       | Draft  | P2 - Medium | S2 - Major |      |
+| ID      | User Story / Feature                                      | Category                     | Requirement (NFR)                                                                                                                                                  | Rationale / Risk                                                       | Acceptance (G-W-T)                                                                                                                                              | Evidence (test/log/scan/policy)                                     | Trace (issue/link) | Owner | Status | Priority    | Severity   | Tags |
+| ------- | --------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------ | ----- | ------ | ----------- | ---------- | ---- |
+| NFR-001 | US-001 – Регистрация пользователя | Performance                  | Время отклика `/api/register` ≤ 400 <br />мспри 20 RPS в течение 5 мин                                                              | UX/SLO — комфортная скорость регистрации | **Given** сервис здоров <br />**When** 20 RPS на `/api/register` 5 мин<br />**Then** P95 ≤ 400 мс, ошибки ≤ 1 % | test:`load-register-20rps`; metrics: http_server_requests_seconds |                    |       | Draft  | P2 - Medium | S2 - Major |      |
+| NFR-002 | US-001 – Регистрация пользователя | Security-InputValidation     | Размер тела POST ≤ 1 MiB;<br />только JSON; запрещены лишние поля                                                              | Защита от DoS и грязных данных                   | Given<br />When<br />Then                                                                                                                                       | e2e:`register-input-limit`; schema validator                      |                    |       | Draft  | P2 - Medium | S2 - Major |      |
+| NFR-003 | US-001 – Регистрация пользователя | Security-AuthZ/RBAC          | Незарегистрированный пользователь<br />не может выполнять действия, требующие роли user/admin | Минимизация привилегий                            | Given<br />When<br />Then                                                                                                                                       | e2e:`unauth-access-deny`; auth-policy.md                          |                    |       | Draft  | P2 - Medium | S2 - Major |      |
+| NFR-004 | US-001 – Регистрация пользователя | Security-Secrets             | В репозитории 0 секретов;<br />используются только переменные окружения/KMS                               | Предотвращение утечек                              | Given<br />When<br />Then                                                                                                                                       | report:`trufflehog-scan`; runtime config                          |                    |       | Draft  | P2 - Medium | S2 - Major |      |
+| NFR-005 | US-001 – Регистрация пользователя | Maintainability/FeatureFlags | Возможность включать/выключать<br /> капчу через feature-flag без релиза                                            | Безопасные релизы и откаты                      | Given<br />When<br />Then                                                                                                                                       | config feature-flags.yaml; лог переключения          |                    |       | Draft  | P2 - Medium | S2 - Major |      |
+| NFR-006 | US-001 – Регистрация пользователя | Privacy/PII                  | Логи не содержат email/телефон;<br />PII удаляются через 30 дней                                                            | Комплаенс и конфиденциальность             | Given<br />When<br />Then                                                                                                                                       | log template; retention policy                                      |                    |       | Draft  | P2 - Medium | S2 - Major |      |
+| NFR-007 | US-001 – Регистрация пользователя | RateLimiting                 | Лимит: 10 запросов / мин с IP;<br />превышение → 429 + Retry-After                                                                     | Защита от спама и brute-force                            | Given<br />When<br />Then                                                                                                                                       | e2e:`register-rate-limit`; logs 429                               |                    |       | Draft  | P2 - Medium | S2 - Major |      |
+| NFR-008 | US-001 – Регистрация пользователя | Availability/Health          | Через 10 с послестарта<br />`/health/ready` отвечает 200                                                                                | Готовность для проб деплоя                      | Given<br />When<br />Then                                                                                                                                       | readiness/startup probe config                                      |                    |       | Draft  | P2 - Medium | S2 - Major |      |
 
 ---
 
 ## Памятка по заполнению
 
-***Измеримость.** В `Requirement` фиксируйте числа и границы (мс, RPS, минуты, MiB, коды 4xx/5xx, CVSS).
-
-***Проверяемость.** В `Acceptance (G-W-T)` используйте объективные условия и наблюдаемые факты (код ответа, квантиль, наличие заголовка, запись в лог).
-
-***Связность.** Сверяйте, чтобы NFR не конфликтовали (timeouts vs retry, rate limits vs SLO, privacy vs logging).
-
-***План проверки.** В `Evidence` укажите, чем это будет подтверждаться позже (test/log/scan/policy). В рамках семинара **реальные артефакты не требуются**.
-
-***Трассировка.** В `Trace` добавляйте ссылки на Issues/документы, чтобы потом не искать контекст.
+* **Измеримость.** В `Requirement` фиксируйте числа и границы (мс, RPS, минуты, MiB, коды 4xx/5xx, CVSS).
+* **Проверяемость.** В `Acceptance (G-W-T)` используйте объективные условия и наблюдаемые факты (код ответа, квантиль, наличие заголовка, запись в лог).
+* **Связность.** Сверяйте, чтобы NFR не конфликтовали (timeouts vs retry, rate limits vs SLO, privacy vs logging).
+* **План проверки.** В `Evidence` укажите, чем это будет подтверждаться позже (test/log/scan/policy). В рамках семинара **реальные артефакты не требуются**.
+* **Трассировка.** В `Trace` добавляйте ссылки на Issues/документы, чтобы потом не искать контекст.
 
 ---
 
