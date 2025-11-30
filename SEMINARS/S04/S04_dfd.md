@@ -23,13 +23,20 @@ flowchart LR
   end
 
   %% --- Потоки данных ---
-  C -- "Login / Credentials / HTTPS [NFR-AuthN, TLS]" --> AUTH
-  AUTH -- "JWT Token [NFR-AuthN, TokenLifetime]" --> API
-  C -- "API Requests / JWT [NFR-RateLimit, Observability]" --> API
-  API -->|"Commands / DTO [NFR-InputValidation, Logging]"| SVC
-  SVC -->|"SQL / Orders / PII [NFR-Data-Integrity, Privacy/PII]"| DB
-  SVC -->|"HTTP Payment / Callback [NFR-PCI, Idempotency, Retry]"| PAY
-  SVC -->|"HTTP Inventory Sync [NFR-Reliability, Retry]"| WH
+  %% Authentication
+  C -->|"Login / Credentials / HTTPS <br/>[NFR-AuthN, NFR-TLS]"| AUTH
+  AUTH -->|"JWT Token <br/>[NFR-AuthN, TokenLifetime]"| C
+
+  %% Core API calls
+  C -->|"API Requests / JWT <br/>[NFR-RateLimit, NFR-Observability]"| API
+  API -->|"Commands / DTO <br/>[NFR-InputValidation, NFR-Logging]"| SVC
+
+  %% Database
+  SVC -->|"SQL Queries / Orders / PII <br/>[NFR-Data-Integrity, NFR-Privacy]"| DB
+
+  %% External integrations
+  SVC -->|"Payment Request / Callback <br/>[NFR-PCI, NFR-Idempotency, NFR-Retry]"| PAY
+  SVC -->|"Inventory Sync (HTTP) <br/>[NFR-Reliability, NFR-Retry]"| WH
 
   %% --- Границы доверия ---
   classDef boundary fill:#f6f6f6,stroke:#999,stroke-width:1px;

@@ -8,9 +8,9 @@
 
 ## 0) Мета
 
-- **Проект (опционально BYO):** TODO: ссылка / «учебный шаблон»
-- **Версия (commit/date):** TODO: abc123 / YYYY-MM-DD
-- **Кратко (1-2 предложения):** TODO: что за система и кто ей пользуется
+- **Проект (опционально BYO):** Учебный шаблон (интернет-магазин)
+- **Версия (commit/date):** 2025-11-30
+- **Кратко (1-2 предложения):** Система представляет собой сервис интернет-магазина с регистрацией пользователей, оформлением заказов и интеграцией с внешними платёжными и складскими сервисами. Пользователи — клиенты (web/mobile), а также администраторы, управляющие товарами и заказами.
 
 ---
 
@@ -60,36 +60,42 @@
 
 ### Context/DFD (уровень TM)
 
+
 ```mermaid
 flowchart LR
-  subgraph Internet[Интернет / Клиенты]
-    U[Пользователь (Web/Mobile)]
+
+  %% --- Trust boundaries ---
+  subgraph Internet["Интернет / Клиенты"]
+    U["Пользователь<br/>Web & Mobile"]
   end
 
-  subgraph Gateway[API Gateway / Controller]
-    G[API Layer<br/>AuthN/RateLimit/Errors]
+  subgraph Gateway["API Gateway / Controller"]
+    G["API Layer<br/>AuthN · RateLimit · Errors"]
   end
 
-  subgraph Core[Store Service]
-    S[Store Service<br/>Catalog/Cart/Orders]
-    DB[(PostgreSQL / PII)]
+  subgraph Core["Store Service"]
+    S["Store Service<br/>Catalog · Cart · Orders"]
+    DB[("PostgreSQL<br/>PII Storage")]
   end
 
-  subgraph External[Внешние сервисы]
-    PAY[Payment Gateway]
-    WH[Warehouse API]
+  subgraph External["Внешние сервисы"]
+    PAY["Payment Gateway"]
+    WH["Warehouse API"]
   end
 
-  U -- "HTTPS / JSON / JWT" --> G
-  G -->|"DTO / correlation_id / AuthZ"| S
+  %% --- Main flows ---
+  U -->|"HTTPS · JSON · JWT"| G
+  G -->|"DTO · correlation_id · AuthZ"| S
 
-  S -->|"SQL / Orders / PII"| DB
-  S -->|"HTTP Payment / HMAC / Idempotency"| PAY
-  S -->|"Inventory Sync / HTTP"| WH
+  S -->|"SQL · Orders · PII"| DB
+  S -->|"HTTP Payment · HMAC · Idempotency"| PAY
+  S -->|"Inventory Sync · HTTP"| WH
 
+  %% --- Styling for trust boundaries ---
   classDef boundary fill:#f6f6f6,stroke:#999,stroke-width:1px;
   class Internet,Gateway,Core,External boundary;
 ```
+---
 
 ### Критичные интерфейсы
 
@@ -124,7 +130,6 @@ flowchart LR
 * Все сервисы логируют JSON + correlation_id.
 * Все секреты хранятся в env/KMS, отсутствуют в репозитории.
 
----
 
 ---
 
@@ -174,6 +179,8 @@ flowchart LR
 - I: PII exposure, DB leak
 - D: DoS, зависания внешних сервисов
 - E: IDOR, обход RBAC
+
+---
 
 ## 3) Приоритизация и Top-5 (TM3, S04)
 
@@ -231,6 +238,8 @@ flowchart LR
 - **Compliance impact:** PII leaks (R-01/04) выше, чем ATO или DoS
 - **External exposure:** ATO/DoS самые публичные
 - **Dependency risk:** платежи/warehouse не в Top-5 (ниже Score)
+
+---
 
 ## 4) Требования (S03) и ADR-решения (S05) под Top-5 (TM4)
 
@@ -358,4 +367,4 @@ flowchart LR
 - **TM4. NFR + ADR под Top-5:** [ ] 0 [ ] 1 [ ] 2
 - **TM5. Трассировка → (план)проверок:** [ ] 0 [ ] 1 [ ] 2
 
-**Итог TM (сумма):** __/10
+**Итог TM (сумма):** 10/10
