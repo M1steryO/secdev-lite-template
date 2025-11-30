@@ -24,7 +24,7 @@ flowchart LR
 
   %% --- Потоки данных ---
   C -- "Login / Credentials / HTTPS [NFR-AuthN, TLS]" --> AUTH
-  AUTH -- "JWT Token [NFR-AuthN, TokenLifetime]" --> API
+  AUTH --> |"JWT Token [NFR-AuthN, TokenLifetime]"| C
   C -- "API Requests / JWT [NFR-RateLimit, Observability]" --> API
   API -->|"Commands / DTO [NFR-InputValidation, Logging]"| SVC
   SVC -->|"SQL / Orders / PII [NFR-Data-Integrity, Privacy/PII]"| DB
