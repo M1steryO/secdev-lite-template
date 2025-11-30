@@ -16,129 +16,346 @@
 
 ## 1) Архитектура и границы доверия (TM1, S04)
 
-- **Роли/активы:** TODO: пользователь, админ; ПДн/токены/платёжные данные/модели …
-- **Зоны доверия:** Internet / DMZ / Internal / Device (если есть)
-- **Context/DFD:**
+### Роли и активы
+
+**Роли:**
+
+- **Пользователь (Client/User)** — оформляет регистрацию, авторизацию, работу с корзиной и заказами.
+- **Администратор (Admin)** — управляет товарами, складами, акциями; имеет расширенные права.
+- **Сервисные учётки** — внутренние сервисы для взаимодействия друг с другом (Store→DB, Store→Payment, Store→Warehouse).
+
+**Активы:**
+
+- Персональные данные пользователей (PII): email, phone.
+- Учетные данные (JWT access/refresh tokens).
+- Данные заказов и корзины.
+- Платежные данные (tokenized).
+- Логи и метрики (включают correlation_id).
+- Конфигурации и секреты сервисов.
+
+---
+
+### Зоны/границы доверия
+
+- **Интернет (Untrusted):**Браузеры и мобильные клиенты. Все запросы считаются недоверенными, требуют валидации, rate-limit, аутентификации.
+- **Frontend/API Gateway (DMZ):**Первый компонент внутреннего контура. Ограниченно доверенная зона: сюда могут прийти и валидные, и злонамеренные запросы. Здесь реализуются:
+
+  - проверка JWT,
+  - rate-limit,
+  - error contract (RFC7807),
+  - корреляция запросов (X-Correlation-ID).
+- **Service Layer (Trusted but controlled):**Store Service (Catalog, Cart, Orders).Потоки считаются частично доверенными, но необходима:
+
+  - авторизация (RBAC/tenant),
+  - защита от тамперинга DTO,
+  - параметризация SQL,
+  - защита PII.
+- **Data Layer (Highly sensitive):**PostgreSQL. Хранит PII, данные заказов.Доступ только через сервисный аккаунт с минимальными правами.
+- **External Integration Zone:**
+
+  - Payment gateway — недоверенный до криптографической проверки подписи.
+  - Warehouse API — частично доверенный, но нестабильный (timeouts/retry/CB).
+
+---
+
+### Context/DFD (уровень TM)
 
 ```mermaid
-%% TODO: замените каркас на свой (минимум 5 узлов/потоков)
 flowchart LR
-  U[User] -->|HTTPS| GW[API/Ingress]
-  GW --> S1[Service A]
-  GW --> S2[Service B]
-  S1 --> DB[(Database)]
-  S2 --> AUTH[Auth/IdP]
+  subgraph Internet[Интернет / Клиенты]
+    U[Пользователь (Web/Mobile)]
+  end
+
+  subgraph Gateway[API Gateway / Controller]
+    G[API Layer<br/>AuthN/RateLimit/Errors]
+  end
+
+  subgraph Core[Store Service]
+    S[Store Service<br/>Catalog/Cart/Orders]
+    DB[(PostgreSQL / PII)]
+  end
+
+  subgraph External[Внешние сервисы]
+    PAY[Payment Gateway]
+    WH[Warehouse API]
+  end
+
+  U -- "HTTPS / JSON / JWT" --> G
+  G -->|"DTO / correlation_id / AuthZ"| S
+
+  S -->|"SQL / Orders / PII"| DB
+  S -->|"HTTP Payment / HMAC / Idempotency"| PAY
+  S -->|"Inventory Sync / HTTP"| WH
+
+  classDef boundary fill:#f6f6f6,stroke:#999,stroke-width:1px;
+  class Internet,Gateway,Core,External boundary;
 ```
 
-  (или приложите файл в `EVIDENCE/dfd-context.png` и дайте ссылку)
+### Критичные интерфейсы
 
-- **Критичные интерфейсы и допущения:**  
-  TODO: что считаем доверенным/недоверенным; внешние интеграции; админ-доступ; где проходит boundary
+1. **Internet → API Gateway**
+
+   Наиболее опасный периметр. Угрозы: bruteforce, tampering, PII exposure, DoS.
+
+   Требования: JWT AuthN, rate-limit, валидация тела, error contract.
+2. **API Gateway → Store Service**
+
+   Полудоверенный трафик.
+
+   Требования: сервисная аутентификация, проверка Tenant/AuthZ, защита DTO от tampering.
+3. **Store Service → PostgreSQL**
+
+   Самый чувствительный актив — PII и заказы.
+
+   Требования: параметризованные SQL, canonicalization, минимальные права, audit.
+4. **External → Store Service (Payment Webhooks)**
+
+   Недоверенные внешние вызовы.
+
+   Требования: подпись HMAC, idempotency keys, timeouts + retry + circuit breaker.
+
+---
+
+### Допущения
+
+* Все токены клиентов — JWT; refresh хранится только у клиента.
+* Internal network частично доверенная, но требует service-to-service authentication.
+* Платёжные данные не хранятся — только токены/ID от провайдера.
+* Все сервисы логируют JSON + correlation_id.
+* Все секреты хранятся в env/KMS, отсутствуют в репозитории.
+
+---
 
 ---
 
 ## 2) Реестр угроз STRIDE (TM2, TM3, S04)
 
-_Минимум: закрыть все буквы **S, T, R, I, D, E**. Оценки **L/I** по шкале 1-5._
+Ниже — консолидированная таблица угроз по узлам и потокам DFD.
+Все категории STRIDE покрыты, угрозы доменно-специфичны (e-commerce, платежи, PII).
 
-| ID  | STRIDE | Компонент/поток | Угроза (кратко)                                   | L | I | L×I |
-|-----|--------|------------------|----------------------------------------------------|---|---|-----|
-| T01 | **S**  | AUTH             | Подмена личности украденным/поддельным токеном     | 3 | 5 | 15  |
-| T02 | **T**  | GW → S1          | Replay-атака, отсутствие nonce/ts                  | 2 | 4 | 8   |
-| T03 | **R**  | Audit            | Отказ от действий: нет связки user↔action          | 3 | 3 | 9   |
-| T04 | **I**  | S1 → DB          | Инъекции/невалидный ввод                           | 2 | 5 | 10  |
-| T05 | **D**  | S1               | DoS/ресурсное истощение без лимитов/таймаутов      | 4 | 4 | 16  |
-| T06 | **E**  | Repo/Secrets     | Секреты в коде/логах                               | 2 | 5 | 10  |
-| …   | …      | …                | …                                                  | … | … | …   |
-
-> TODO: добавьте доменно-специфичные угрозы (злоупотребления, scraping, многократная регистрация и т.п.).
-
----
-
-## 3) Приоритизация и Top-5 _(TM3, S04)_
-
-1) **T05 DoS** - L×I=16; публичная экспозиция; нет лимитов/таймаутов.  
-2) **T01 Подмена личности** - L×I=15; доступ к ПДн; критичен контур AUTH.  
-3) **T04 Инъекции** - L×I=10; риск компрометации БД.  
-4) **T06 Секреты** - L×I=10; риск утечек/эскалации.  
-5) **T03 Отказ от действий** - L×I=9; требуется трассируемость.  
-
-> TODO: если меняете порядок - укажите 1-2 фактора (экспозиция/чувствительность/частота/обнаружимость).
+| ID   | STRIDE      | Компонент / Поток      | Угроза (краткое описание)                                                                                                                                                    | L | I | L×I |
+| ---- | ----------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -: | -: | ---: |
+| R-01 | **I** | Store Service → PostgreSQL          | **Массовая утечка PII** через SQL-инъекцию, неправильную нормализацию или логирование сырых PII.                      | 4 | 5 |   20 |
+| R-02 | **S** | Client → Auth Service               | **Захват аккаунта (ATO)**: кража или перебор пароля/JWT, фишинг, повторное использование украденного токена | 4 | 5 |   20 |
+| R-03 | **T** | Gateway → Store Service             | **Tampering DTO**: изменение полей (цены/кол-ва/owner_id) до бизнес-логики, IDOR-подмена идентификаторов                         | 4 | 4 |   16 |
+| R-04 | **I** | Gateway → Client (API Response)     | **PII Exposure**: возврат email/phone/address в ответах, утечка через stacktrace или неправильный error flow                                       | 4 | 4 |   16 |
+| R-05 | **D** | Client → API Gateway                | **DoS / Resource exhaustion**: массовые POST-запросы, обход rate-limit, payload > limit                                                                                 | 4 | 3 |   12 |
+| R-06 | **S** | External → Store Service (Webhooks) | **Spoofing Payment Gateway**: фальшивый webhook без подписи или с подделанным HMAC                                                                        | 3 | 4 |   12 |
+| R-07 | **T** | Store Service → Payment Gateway     | **Tampering Payment Request**: подмена суммы платежа, currency или order_id                                                                                           | 3 | 4 |   12 |
+| R-08 | **R** | Store Service (Business Actions)     | **Repudiation**: отсутствие аудита изменения статуса заказа/аккаунта                                                                          | 3 | 3 |    9 |
+| R-09 | **E** | Gateway ↔ Store Service (AuthZ)     | **Elevation of Privilege / IDOR**: пользователь запрашивает чужие ресурсы                                                                                | 3 | 4 |   12 |
+| R-10 | **D** | Store Service → Warehouse API       | **Зависание внешнего API**: истощение воркеров, рост latency, блокировка заказов                                                     | 3 | 3 |    9 |
 
 ---
+
+### Пояснения по доменно-специфичным угрозам
+
+**E-commerce специфичные угрозы:**
+
+- Подмена цены в DTO (Tampering).
+- Подмена количества товаров перед оплатой.
+- IDOR-доступ к чужой корзине/заказу.
+- Подделка статуса платежа через фальшивые webhooks.
+- Утечка PII через публичные API (часто встречается при ошибках в сериализации).
+- Склады, платежи → нестабильные внешние интеграции → угрозы D/T.
+
+**PII/Financial threats (регуляторно значимые):**
+
+- Утечка персональных данных (I).
+- Подмена финансовых параметров заказа (T).
+- Утечка платежных данных (I).
+- Отрицание действий администратора (R).
+
+**Соответствие STRIDE:**
+
+- S: ATO, spoofed webhooks, spoofing JWT
+- T: tampering DTO, подмена параметров платежа
+- R: отсутствие аудита
+- I: PII exposure, DB leak
+- D: DoS, зависания внешних сервисов
+- E: IDOR, обход RBAC
+
+## 3) Приоритизация и Top-5 (TM3, S04)
+
+Приоритизация выполнена по модели L×I (1–5), затем — тай-брейкеры
+(blast radius, detectability, compliance, dependency risk).
+
+### Top-5 рисков
+
+### **Top-1: R-01 — Массовая утечка PII (Score 20 = 4×5)**
+
+**Почему #1:**
+
+- Максимальный импакт (I=5): затрагивает все учетные записи → GDPR/152-ФЗ риски.
+- Высокая вероятность (L=4): есть SQL-слой, есть обработка PII, есть vectors через API/logs.
+- Blast radius: **вся БД**.
+- Detectability низкая: утечки из логов/дампов часто долго незаметны.
+
+### **Top-2: R-02 — Захват аккаунта (Spoofing/ATO) (Score 20 = 4×5)**
+
+**Почему ниже R-01:**
+
+- Хотя Score одинаковый, blast radius меньше (компрометация аккаунтов, не всей БД).
+- Detectability выше (аномалии логинов фиксируются быстрее).
+- Однако экспозиция максимальная: самый атакуемый публичный контур.
+
+### **Top-3: R-03 — Tampering DTO / IDOR / подмена идентификаторов (Score 16 = 4×4)**
+
+**Почему #3:**
+
+- Частая уязвимость e-commerce (IDOR, tampering price/quantity).
+- Импакт значимый (финансовые потери, чужие заказы).
+- Экспозиция высокая — весь публичный API поверх DTO.
+- Blast radius ограничен tenant/пользователем → ниже, чем у PII/ATO.
+
+### **Top-4: R-04 — PII Exposure в API/ошибках (Score 16 = 4×4)**
+
+**Почему ниже R-03:**
+
+- Score равен, но импакт локальнее (утечка через API, а не из всей БД).
+- Возможность обнаружения выше (логи/DAST тесты ловят leakage).
+- Threat связан с ошибками сериализации/RFC7807/stacktrace.
+
+### **Top-5: R-05 — DoS / Resource Exhaustion (Score 12 = 4×3)**
+
+**Почему #5:**
+
+- Высокая вероятность (public surface), но импакт ниже, чем у PII/ATO.
+- Появляется деградация сервиса, но без утечек данных.
+- Есть компенсирующие механизмы: rate-limit, WAF, autoscale.
+
+### Тай-брейкеры, использованные при сортировке:
+
+- **Blast radius:** R-01 > R-02 > R-03/R-04
+- **Detectability:** PII DB leak < ATO < Tampering < API Leakage
+- **Compliance impact:** PII leaks (R-01/04) выше, чем ATO или DoS
+- **External exposure:** ATO/DoS самые публичные
+- **Dependency risk:** платежи/warehouse не в Top-5 (ниже Score)
 
 ## 4) Требования (S03) и ADR-решения (S05) под Top-5 (TM4)
 
-### NFR-1. Аутентификация и защита токенов
+### NFR-1. Защита PII (NFR-006, NFR-010)
 
 - **AC (GWT):**
-  - **Given** валидный токен, **When** запрос `/api/...`, **Then** `200` и `X-User-Id=subject`.
-  - **Given** просроченный/поддельный токен, **When** запрос, **Then** `401` и событие `auth.token_invalid` в аудите.
+  - **Given** DTO содержит PII (email/phone/address),**When** сервис пишет лог,**Then** PII маскированы; формат нормализован (E.164/NFC).
+  - **Given** запись PII в БД,
+    **When** выполняется INSERT/UPDATE,
+    **Then** используются параметризованные SQL-запросы.
 
-### NFR-2. Лимиты и таймауты
+### NFR-2. Аутентификация и защита токенов (NFR-003, NFR-007)
 
-- **AC (GWT):** rate-limit ≤ **N** rps/uid и ≤ **M** rps/ip; timeout ≤ **T** сек; при превышении - `429` + событие `rate_limit_hit`.
+- **AC (GWT):**
+  - **Given** валидный JWT,**When** запрос к защищённому endpoint,**Then** `200` и корректный `X-User-Id`.
+  - **Given** просроченный/поддельный токен,
+    **When** запрос,
+    **Then** `401` (RFC7807) + событие `auth.token_invalid`.
 
-### NFR-3. Аудит критических операций
+### NFR-3. Валидация DTO и защита от tampering (NFR-002)
 
-- **AC (GWT):** логируется `correlation_id`, uid, время и результат для операций (`login`, `role_change`, `data_export`, …).
+- **AC (GWT):**
+  - **Given** тело > 1MiB или содержит лишние поля,**When** POST /api/...**Then** `400/413` по RFC7807.
+  - **Given** пользователь запрашивает чужой ресурс,
+    **When** /api/orders/{id}
+    **Then** `403/404` без утечки данных.
 
-> TODO: при необходимости добавьте свои NFR под Top-5.
+### NFR-4. Ошибки API без утечки данных (NFR-009)
+
+- **AC (GWT):**
+  - **Given** внутренняя ошибка,
+    **When** сервис формирует ответ,
+    **Then** формат RFC7807, без stacktrace, correlation_id в теле.
+
+### NFR-5. Лимиты/таймауты для защиты от DoS (NFR-007, NFR-008)
+
+- **AC (GWT):**
+  - **Given** клиент превышает лимит,**When** > N rps,**Then** `429` + корректный `Retry-After`.
+  - **Given** зависание внешнего API,
+    **When** timeout > T сек,
+    **Then** запрос отменён; событие `ext.timeout`.
 
 ---
 
 ### Краткие ADR (минимум 2) - архитектурные решения S05
 
-(карточки короткие, по делу)
+### **ADR-001 — SQL Injection Protection**
 
-#### ADR-001 - TODO: название
+- **Context (угрозы/NFR):** R-01; NFR-006/NFR-010; контур StoreService→DB
+- **Decision:** параметризованные SQL, канонизация данных, запрет динамических SQL; шифрование PII на уровне колонок
+- **Trade-offs:** небольшое усложнение миграций и сериализации
+- **DoD:**
+  - тест: `sql_injection_test` → всегда PASS
+  - лог: отсутствие сырых PII в логах
+  - скан: Trivy/SAST → 0 SQLi findings
+- **Owner:** backend-team
+- **Evidence:** `EVIDENCE/db-sast-report.json`
 
-- **Context (угрозы/NFR):** T01, NFR-1; контур AUTH
-- **Decision:** что делаем и где (напр., проверка подписи токена в GW; короткий TTL; rotatable keys)
-- **Trade-offs (кратко):** стоимость/производительность/UX
-- **DoD (готовность):** измеримые условия (см. раздел 6)
-- **Owner:** ФИО/роль
-- **Evidence (план/факт):** EVIDENCE/dast-auth-YYYY-MM-DD.pdf#token-tests
+---
 
-#### ADR-002 - TODO: название
+### **ADR-002 — Auth Hardening (JWT TTL + MFA + Claims Validation)**
 
-- **Context:** T05, NFR-2; публичные endpoint’ы
-- **Decision:** rate-limit на GW + server-side timeouts; backpressure
-- **Trade-offs:** возможные 429 и влияние на UX
-- **DoD:** срабатывание 429 при >N rps; p95 ≤ T сек
-- **Owner:** ФИО/роль
-- **Evidence (план/факт):** EVIDENCE/load-after.png
+- **Context:** R-02; NFR-1/NFR-2; контур AUTH
+- **Decision:** короткий TTL access-token, refresh-поток, проверка iss/aud/exp/nbf, rate-limit на логины, событие `auth.token_invalid`
+- **Trade-offs:** возможное увеличение re-login частоты
+- **DoD:**
+  - > N логинов/мин → 429
+    >
+  - истёкший токен → 401 (RFC7807)
+  - audit: запись `auth.token_invalid` создаётся
+- **Owner:** backend-team
+- **Evidence:** `EVIDENCE/dast-auth-tests.json`
+
+---
+
+### **ADR-004 — API Error Contract (RFC7807 + no PII)**
+
+- **Context:** R-04; NFR-4/NFR-1
+- **Decision:** единый middleware ошибок, маскирование деталей, запрет stacktrace, добавление correlation_id
+- **Trade-offs:** меньше диагностической информации в проде
+- **DoD:**
+  - internal error → ответ `application/problem+json`
+  - stacktrace отсутствует
+  - поле `correlation_id` присутствует
+- **Owner:** backend-team
+- **Evidence:** `EVIDENCE/api-errors-screenshot.png`
 
 ---
 
 ## 5) Трассировка Threat → NFR → ADR → (План)Проверки (TM5)
 
-| Threat | NFR   | ADR     | Чем проверяем (план/факт)                                                                 |
-|-------:|-------|---------|-------------------------------------------------------------------------------------------|
-| T01    | NFR-1 | ADR-001 | DAST auth-flow; аудит `auth.token_invalid` → EVIDENCE/dast-auth-YYYY-MM-DD.pdf / audit-sample.txt |
-| T05    | NFR-2 | ADR-002 | Нагрузочный тест + проверка 429/таймаутов → EVIDENCE/load-after.png                       |
-| T04    | NFR-X | ADR-00X | SAST/линтер на инъекции/параметризацию → EVIDENCE/sast-YYYY-MM-DD.pdf#sql-1              |
-| T03    | NFR-3 | ADR-00Y | Анализ образцов аудита → EVIDENCE/audit-sample.txt#corrid                                |
-
-> TODO: заполните таблицу для ваших Top-5; верификация может быть «планом», позже артефакты появятся в DV/DS.
+|                                     Threat (R-ID) | NFR                                         | ADR                                                          | Чем проверяем (план/факт)                                                                                                                  |
+| ------------------------------------------------: | ------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|                 **R-01 — PII DB/Log Leak** | NFR-1 (Privacy), NFR-010 (Data-Integrity)   | ADR-001 (sql_injection_protection), ADR-003 (pii_protection) | SAST на SQLi + проверка маскировки PII →`EVIDENCE/sast-pii-sql-YYYY-MM-DD.json`; анализ логов (`EVIDENCE/log-samples.txt`) |
+| **R-02 — Account Takeover / JWT Spoofing** | NFR-2 (AuthN/Token), NFR-007 (RateLimit)    | ADR-002 (auth_hardening)                                     | DAST auth-flow (expired/invalid JWT) + событие `auth.token_invalid` → `EVIDENCE/dast-auth-tests.json`, `EVIDENCE/audit-auth.log`                 |
+|            **R-03 — DTO Tampering / IDOR** | NFR-2 (RateLimit), NFR-3 (InputValidation)  | -                                                            | Интеграционный IDOR-test + payload >1MiB →`EVIDENCE/idor-tests.log`, `EVIDENCE/validation-tests.json`                                       |
+|      **R-04 — PII Exposure in API/Errors** | NFR-4 (API Errors RFC7807), NFR-1 (Privacy) | ADR-004 (api_error_contract)                                 | Проверка RFC7807 + отсутствие stacktrace/PII →`EVIDENCE/api-error-contract.png`; DAST leakage scan                                        |
+|       **R-05 — DoS / Resource Exhaustion** | NFR-5 (RateLimit/Timeouts/CB)               | -                                                            | Нагрузочный тест (>N rps) + ожидание 429/Retry-After →`EVIDENCE/load-test-429.png`; CB-open event → `EVIDENCE/cb-metrics.json`    |
 
 ---
 
 ## 6) План проверок (мост в DV/DS)
 
-- **SAST/Secrets/SCA:** TODO: инструменты и куда положите отчёты в `EVIDENCE/`
-- **SBOM:** TODO: генератор/формат
-- **DAST (если применимо):** TODO: стенд/URL; профиль
-- **Примечание:** на этапе TM допустимы черновые планы/ссылки; финальные отчёты появятся в **DV/DS**.
+- **SAST/Secrets/SCA:**Используем `Trivy` и `Gitleaks`.Отчёты сохраняем в:
+
+  - `EVIDENCE/sast-pii-sql-YYYY-MM-DD.json`
+  - `EVIDENCE/secrets-scan-YYYY-MM-DD.json`
+- **SBOM:**Генерация SBOM с помощью `syft` (формат CycloneDX).Артефакт: `EVIDENCE/sbom-cyclonedx.json`
+- **DAST:**Используем OWASP ZAP baseline против dev-стенда `/api/*`.Отчёт: `EVIDENCE/dast-baseline-report.html`
+- **Load/Stress tests:**K6 (или locust) для проверки rate-limit + 429/Retry-After + timeout.Артефакты:
+
+  - `EVIDENCE/load-test-429.png`
+  - `EVIDENCE/cb-metrics.json`
+- **Audit/Logs:**Проверка корректности создания событий (`auth.token_invalid`, `rate_limit_hit`, `idor_attempt`).Артефакт: `EVIDENCE/audit-log-samples.txt`
+- **Примечание:**
+  На стадии TM это план. Реальные файлы попадут в DV/DS на следующем этапе.
 
 ---
 
 ## 7) Самопроверка по рубрике TM (0/1/2)
 
-- **TM1. Архитектура и границы доверия:** [ ] 0 [ ] 1 [ ] 2  
-- **TM2. Покрытие STRIDE и уместность угроз:** [ ] 0 [ ] 1 [ ] 2  
-- **TM3. Приоритизация и Top-5:** [ ] 0 [ ] 1 [ ] 2  
-- **TM4. NFR + ADR под Top-5:** [ ] 0 [ ] 1 [ ] 2  
-- **TM5. Трассировка → (план)проверок:** [ ] 0 [ ] 1 [ ] 2  
+- **TM1. Архитектура и границы доверия:** [ ] 0 [ ] 1 [ ] 2
+- **TM2. Покрытие STRIDE и уместность угроз:** [ ] 0 [ ] 1 [ ] 2
+- **TM3. Приоритизация и Top-5:** [ ] 0 [ ] 1 [ ] 2
+- **TM4. NFR + ADR под Top-5:** [ ] 0 [ ] 1 [ ] 2
+- **TM5. Трассировка → (план)проверок:** [ ] 0 [ ] 1 [ ] 2
 
 **Итог TM (сумма):** __/10
