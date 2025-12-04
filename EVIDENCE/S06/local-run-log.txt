@@ -1,0 +1,30 @@
+(.venv) (base) dmitrypeschansky@MacBook-Air-5 secdev-lite-template-dv % make ci-2
+python3 -m venv .venv
+Requirement already satisfied: fastapi==0.115.0 in ./.venv/lib/python3.11/site-packages (from -r requirements.txt (line 2)) (0.115.0)
+Requirement already satisfied: uvicorn==0.30.1 in ./.venv/lib/python3.11/site-packages (from -r requirements.txt (line 3)) (0.30.1)
+Requirement already satisfied: jinja2==3.1.4 in ./.venv/lib/python3.11/site-packages (from -r requirements.txt (line 4)) (3.1.4)
+Requirement already satisfied: pydantic==2.9.2 in ./.venv/lib/python3.11/site-packages (from -r requirements.txt (line 5)) (2.9.2)
+Requirement already satisfied: pytest==8.3.2 in ./.venv/lib/python3.11/site-packages (from -r requirements.txt (line 6)) (8.3.2)
+Requirement already satisfied: httpx==0.27.2 in ./.venv/lib/python3.11/site-packages (from -r requirements.txt (line 7)) (0.27.2)
+Requirement already satisfied: starlette<0.39.0,>=0.37.2 in ./.venv/lib/python3.11/site-packages (from fastapi==0.115.0->-r requirements.txt (line 2)) (0.38.6)
+Requirement already satisfied: typing-extensions>=4.8.0 in ./.venv/lib/python3.11/site-packages (from fastapi==0.115.0->-r requirements.txt (line 2)) (4.15.0)
+Requirement already satisfied: click>=7.0 in ./.venv/lib/python3.11/site-packages (from uvicorn==0.30.1->-r requirements.txt (line 3)) (8.3.1)
+Requirement already satisfied: h11>=0.8 in ./.venv/lib/python3.11/site-packages (from uvicorn==0.30.1->-r requirements.txt (line 3)) (0.16.0)
+Requirement already satisfied: MarkupSafe>=2.0 in ./.venv/lib/python3.11/site-packages (from jinja2==3.1.4->-r requirements.txt (line 4)) (3.0.3)
+Requirement already satisfied: annotated-types>=0.6.0 in ./.venv/lib/python3.11/site-packages (from pydantic==2.9.2->-r requirements.txt (line 5)) (0.7.0)
+Requirement already satisfied: pydantic-core==2.23.4 in ./.venv/lib/python3.11/site-packages (from pydantic==2.9.2->-r requirements.txt (line 5)) (2.23.4)
+Requirement already satisfied: iniconfig in ./.venv/lib/python3.11/site-packages (from pytest==8.3.2->-r requirements.txt (line 6)) (2.3.0)
+Requirement already satisfied: packaging in ./.venv/lib/python3.11/site-packages (from pytest==8.3.2->-r requirements.txt (line 6)) (25.0)
+Requirement already satisfied: pluggy<2,>=1.5 in ./.venv/lib/python3.11/site-packages (from pytest==8.3.2->-r requirements.txt (line 6)) (1.6.0)
+Requirement already satisfied: anyio in ./.venv/lib/python3.11/site-packages (from httpx==0.27.2->-r requirements.txt (line 7)) (4.12.0)
+Requirement already satisfied: certifi in ./.venv/lib/python3.11/site-packages (from httpx==0.27.2->-r requirements.txt (line 7)) (2025.11.12)
+Requirement already satisfied: httpcore==1.* in ./.venv/lib/python3.11/site-packages (from httpx==0.27.2->-r requirements.txt (line 7)) (1.0.9)
+Requirement already satisfied: idna in ./.venv/lib/python3.11/site-packages (from httpx==0.27.2->-r requirements.txt (line 7)) (3.11)
+Requirement already satisfied: sniffio in ./.venv/lib/python3.11/site-packages (from httpx==0.27.2->-r requirements.txt (line 7)) (1.3.1)
+
+[notice] A new release of pip is available: 23.2.1 -> 25.3
+[notice] To update, run: pip install --upgrade pip
+DB initialized at /Users/dmitrypeschansky/HSE_RBPO/secdev-lite-template-dv/app.db
+.....                                                                                                                                                                [100%]
+-------------------------------- generated xml file: /Users/dmitrypeschansky/HSE_RBPO/secdev-lite-template-dv/EVIDENCE/S06/test-report.xml ---------------------------------
+5 passed in 0.33s   

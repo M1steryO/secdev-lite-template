@@ -5,7 +5,7 @@
 **Risk-ID:** R-02
 **Threat:** S (Spoofing — подбор/кража учетных данных)
 **DFD element/edge:** Клиент → Auth Service (Login Flow)
-**NFR link (ID):** NFR-AuthN, NFR-RateLimit, NFR-API-Contract
+**NFR link (ID):** NFR-003, NFR-007, NFR-009
 **L×I:** L=4, I=5, Score=20
 
 **Ограничения/предпосылки:**
@@ -73,7 +73,7 @@ A быстро приносит эффект, совместима со stateles
 
 **Связки:**
 Risk-ID: **R-02**
-NFR-ID: **NFR-AuthN, NFR-RateLimit, NFR-API-Contract**
+NFR-ID: **NFR-003, NFR-007, NFR-009**
 DFD: **Client → Auth Service**
 
 **Следующие шаги:**

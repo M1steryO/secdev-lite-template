@@ -5,7 +5,7 @@
 **Risk-ID:** R-04
 **Threat:** I (Information Disclosure — утечка PII через ответы API)
 **DFD element/edge:** Клиент → API Gateway (API Responses / PII Exposure)
-**NFR link (ID):** NFR-Privacy/PII, NFR-API-Contract/Errors
+**NFR link (ID):** NFR-006, NFR-009
 **L×I:** L=4, I=4, Score=16
 
 **Ограничения/предпосылки:**
@@ -74,7 +74,7 @@ A обеспечивает быструю, проверяемую и обрат�
 
 **Связки:**
 Risk-ID: **R-04**
-NFR-ID: **NFR-Privacy/PII, NFR-API-Contract/Errors**
+NFR-ID: **NFR-006, NFR-009**
 DFD: **Client → API Gateway**
 
 **Следующие шаги:**

@@ -60,7 +60,6 @@
 
 ### Context/DFD (уровень TM)
 
-
 ```mermaid
 flowchart LR
 
@@ -95,6 +94,7 @@ flowchart LR
   classDef boundary fill:#f6f6f6,stroke:#999,stroke-width:1px;
   class Internet,Gateway,Core,External boundary;
 ```
+
 ---
 
 ### Критичные интерфейсы
@@ -129,7 +129,6 @@ flowchart LR
 * Платёжные данные не хранятся — только токены/ID от провайдера.
 * Все сервисы логируют JSON + correlation_id.
 * Все секреты хранятся в env/KMS, отсутствуют в репозитории.
-
 
 ---
 
@@ -243,7 +242,7 @@ flowchart LR
 
 ## 4) Требования (S03) и ADR-решения (S05) под Top-5 (TM4)
 
-### NFR-1. Защита PII (NFR-006, NFR-010)
+### NFR-1. Защита PII (NFR-006)
 
 - **AC (GWT):**
   - **Given** DTO содержит PII (email/phone/address),**When** сервис пишет лог,**Then** PII маскированы; формат нормализован (E.164/NFC).
@@ -251,7 +250,7 @@ flowchart LR
     **When** выполняется INSERT/UPDATE,
     **Then** используются параметризованные SQL-запросы.
 
-### NFR-2. Аутентификация и защита токенов (NFR-003, NFR-007)
+### NFR-2. Аутентификация и защита токенов (NFR-003)
 
 - **AC (GWT):**
   - **Given** валидный JWT,**When** запрос к защищённому endpoint,**Then** `200` и корректный `X-User-Id`.
@@ -274,7 +273,7 @@ flowchart LR
     **When** сервис формирует ответ,
     **Then** формат RFC7807, без stacktrace, correlation_id в теле.
 
-### NFR-5. Лимиты/таймауты для защиты от DoS (NFR-007, NFR-008)
+### NFR-5. Лимиты/таймауты для защиты от DoS (NFR-007)
 
 - **AC (GWT):**
   - **Given** клиент превышает лимит,**When** > N rps,**Then** `429` + корректный `Retry-After`.
@@ -288,7 +287,9 @@ flowchart LR
 
 ### **ADR-001 — SQL Injection Protection**
 
-- **Context (угрозы/NFR):** R-01; NFR-006/NFR-010; контур StoreService→DB
+#### [ADR-001 - SQL Injection Protection](../SEMINARS/S05/S05_ADR_sql_injection_protection.md)
+
+- **Context (угрозы/NFR):** R-01; NFR-1; контур StoreService→DB
 - **Decision:** параметризованные SQL, канонизация данных, запрет динамических SQL; шифрование PII на уровне колонок
 - **Trade-offs:** небольшое усложнение миграций и сериализации
 - **DoD:**
@@ -300,9 +301,11 @@ flowchart LR
 
 ---
 
-### **ADR-002 — Auth Hardening (JWT TTL + MFA + Claims Validation)**
+### **ADR-002 — Auth Hardening**
 
-- **Context:** R-02; NFR-1/NFR-2; контур AUTH
+#### [ADR-002 -  Auth Hardening](../SEMINARS/S05/S05_ADR_auth_hardening.md)
+
+- **Context:** R-02; NFR-2; контур AUTH
 - **Decision:** короткий TTL access-token, refresh-поток, проверка iss/aud/exp/nbf, rate-limit на логины, событие `auth.token_invalid`
 - **Trade-offs:** возможное увеличение re-login частоты
 - **DoD:**
@@ -315,29 +318,44 @@ flowchart LR
 
 ---
 
-### **ADR-004 — API Error Contract (RFC7807 + no PII)**
+### **ADR-003 — PII Protection**
 
-- **Context:** R-04; NFR-4/NFR-1
-- **Decision:** единый middleware ошибок, маскирование деталей, запрет stacktrace, добавление correlation_id
-- **Trade-offs:** меньше диагностической информации в проде
+#### [ADR-004 - PII Protection](../SEMINARS/S05/S05_ADR_pii_protection.md)
+
+- **Context:** R-04 (PII Exposure in API Responses); NFR-1 (Privacy), NFR-4 (API Errors)
+- **Decision:**
+
+  - Маскирование PII в ответах API (email/phone/address).
+  - Запрет включения PII в RFC7807 ошибок.
+  - Логирование только маскированных полей (allowlist logging).
+  - Ввод единого слоя нормализации/фильтрации DTO перед отправкой клиенту.
+- **Trade-offs:**
+
+  - Отладка сложнее — реальные PII не попадают в логи.
+  - Требуется поддерживать список “разрешённых” полей и масок.
 - **DoD:**
-  - internal error → ответ `application/problem+json`
-  - stacktrace отсутствует
-  - поле `correlation_id` присутствует
+
+  - API возвращает маскированные значения:
+    - email → `t***@mail.com`
+    - phone → `+7********67`
+    - address → `город + район`
+  - Ошибки формата `application/problem+json` **не содержат PII**.
+  - Логи не содержат сырых значений PII (проверяется grep).
+  - Появляется audit-event: `pii_masked=true`.
 - **Owner:** backend-team
-- **Evidence:** `EVIDENCE/api-errors-screenshot.png`
+- **Evidence:** `EVIDENCE/pii-masking-screenshot.png`, `EVIDENCE/log-pii-check.txt`
 
 ---
 
 ## 5) Трассировка Threat → NFR → ADR → (План)Проверки (TM5)
 
-|                                     Threat (R-ID) | NFR                                         | ADR                                                          | Чем проверяем (план/факт)                                                                                                                  |
-| ------------------------------------------------: | ------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-|                 **R-01 — PII DB/Log Leak** | NFR-1 (Privacy), NFR-010 (Data-Integrity)   | ADR-001 (sql_injection_protection), ADR-003 (pii_protection) | SAST на SQLi + проверка маскировки PII →`EVIDENCE/sast-pii-sql-YYYY-MM-DD.json`; анализ логов (`EVIDENCE/log-samples.txt`) |
-| **R-02 — Account Takeover / JWT Spoofing** | NFR-2 (AuthN/Token), NFR-007 (RateLimit)    | ADR-002 (auth_hardening)                                     | DAST auth-flow (expired/invalid JWT) + событие `auth.token_invalid` → `EVIDENCE/dast-auth-tests.json`, `EVIDENCE/audit-auth.log`                 |
-|            **R-03 — DTO Tampering / IDOR** | NFR-2 (RateLimit), NFR-3 (InputValidation)  | -                                                            | Интеграционный IDOR-test + payload >1MiB →`EVIDENCE/idor-tests.log`, `EVIDENCE/validation-tests.json`                                       |
-|      **R-04 — PII Exposure in API/Errors** | NFR-4 (API Errors RFC7807), NFR-1 (Privacy) | ADR-004 (api_error_contract)                                 | Проверка RFC7807 + отсутствие stacktrace/PII →`EVIDENCE/api-error-contract.png`; DAST leakage scan                                        |
-|       **R-05 — DoS / Resource Exhaustion** | NFR-5 (RateLimit/Timeouts/CB)               | -                                                            | Нагрузочный тест (>N rps) + ожидание 429/Retry-After →`EVIDENCE/load-test-429.png`; CB-open event → `EVIDENCE/cb-metrics.json`    |
+|  Threat (R-ID) | NFR           | ADR     | Чем проверяем (план/факт)                                                                                                                  |
+| -------------: | ------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **R-01** | NFR-1         | ADR-001 | SAST на SQLi + проверка маскировки PII →`EVIDENCE/sast-pii-sql-YYYY-MM-DD.json`; анализ логов (`EVIDENCE/log-samples.txt`) |
+| **R-02** | NFR-2         | ADR-002 | DAST auth-flow (expired/invalid JWT) + событие `auth.token_invalid` → `EVIDENCE/dast-auth-tests.json`, `EVIDENCE/audit-auth.log`                 |
+| **R-03** | NFR-2         | -       | Интеграционный IDOR-test + payload >1MiB →`EVIDENCE/idor-tests.log`, `EVIDENCE/validation-tests.json`                                       |
+| **R-04** | NFR-4 , NFR-1 | ADR-004 | Проверка RFC7807 + отсутствие stacktrace/PII →`EVIDENCE/api-error-contract.png`; DAST leakage scan                                        |
+| **R-05** | NFR-5         | -       | Нагрузочный тест (>N rps) + ожидание 429/Retry-After →`EVIDENCE/load-test-429.png`; CB-open event → `EVIDENCE/cb-metrics.json`    |
 
 ---
 

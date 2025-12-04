@@ -5,7 +5,7 @@
 **Risk-ID:** R-01
 **Threat:** T (Tampering — SQL Injection)
 **DFD element/edge:** Store Service → PostgreSQL (SQL Queries, PII)
-**NFR link (ID):** NFR-Data-Integrity, NFR-Privacy/PII
+**NFR link (ID):** NFR-010, NFR-006
 **L×I:** L=4, I=5, Score=20
 
 **Ограничения/предпосылки:**
@@ -73,7 +73,7 @@ A обеспечивает быстрое снижение риска, лёгк�
 
 **Связки:**
 Risk-ID: **R-01**
-NFR-ID: **NFR-Data-Integrity, NFR-Privacy/PII**
+NFR-ID: **NFR-010, NFR-006**
 DFD: **Store Service → PostgreSQL**
 
 **Следующие шаги:**
