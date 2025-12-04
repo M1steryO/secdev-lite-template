@@ -343,17 +343,20 @@ flowchart LR
 
 ## 6) План проверок (мост в DV/DS)
 
-- **SAST/Secrets/SCA:**Используем `Trivy` и `Gitleaks`.Отчёты сохраняем в:
-
-  - `EVIDENCE/sast-pii-sql-YYYY-MM-DD.json`
-  - `EVIDENCE/secrets-scan-YYYY-MM-DD.json`
-- **SBOM:**Генерация SBOM с помощью `syft` (формат CycloneDX).Артефакт: `EVIDENCE/sbom-cyclonedx.json`
-- **DAST:**Используем OWASP ZAP baseline против dev-стенда `/api/*`.Отчёт: `EVIDENCE/dast-baseline-report.html`
-- **Load/Stress tests:**K6 (или locust) для проверки rate-limit + 429/Retry-After + timeout.Артефакты:
-
-  - `EVIDENCE/load-test-429.png`
-  - `EVIDENCE/cb-metrics.json`
-- **Audit/Logs:**Проверка корректности создания событий (`auth.token_invalid`, `rate_limit_hit`, `idor_attempt`).Артефакт: `EVIDENCE/audit-log-samples.txt`
+- **SAST/Secrets/SCA:**
+  - Используем `Trivy` и `Gitleaks`. Затем отчёты сохраняем в:
+    - `EVIDENCE/sast-pii-sql-YYYY-MM-DD.json`
+    - `EVIDENCE/secrets-scan-YYYY-MM-DD.json`
+- **SBOM:**
+  - Генерация SBOM с помощью `syft` . Затем сохраняем в: `EVIDENCE/sbom-cyclonedx.json`
+- **DAST:**
+  - Используем OWASP ZAP baseline против dev-стенда `/api/*`. Затем отчёт сохраняем в: `EVIDENCE/dast-baseline-report.html`
+- **Load/Stress tests:**
+  - K6 для проверки rate-limit + 429/Retry-After + timeout. Затем отчёты сохраняем в:
+    - `EVIDENCE/load-test-429.png`
+    - `EVIDENCE/cb-metrics.json`
+- **Audit/Logs:**
+  - Проверка корректности создания событий (`auth.token_invalid`, `rate_limit_hit`, `idor_attempt`). Затем отчёт сохраняем в: `EVIDENCE/audit-log-samples.txt`
 - **Примечание:**
   На стадии TM это план. Реальные файлы попадут в DV/DS на следующем этапе.
 
