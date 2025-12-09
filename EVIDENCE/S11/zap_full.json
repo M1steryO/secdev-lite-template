@@ -1,0 +1,19 @@
+{
+	"@programName": "ZAP",
+	"@version": "2.16.1",
+	"@generated": "Tue, 9 Dec 2025 15:32:34",
+	"created": "2025-12-09T15:32:34.667669091Z",
+	"site":[ 
+		{
+			"@name": "http://web:8080",
+			"@host": "web",
+			"@port": "8080",
+			"@ssl": "false",
+			"alerts": [ 
+			]
+		}
+	],
+	"sequences":[
+	]
+
+}
