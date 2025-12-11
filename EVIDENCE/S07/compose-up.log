@@ -1,0 +1,53 @@
+#1 [internal] load local bake definitions
+#1 reading from stdin 576B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.60kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.11-slim
+#3 DONE 0.9s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 152B done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.11-slim@sha256:7cd0079a9bd8800c81632d65251048fc2848bf9afda542224b1b10e0cae45575
+#5 resolve docker.io/library/python:3.11-slim@sha256:7cd0079a9bd8800c81632d65251048fc2848bf9afda542224b1b10e0cae45575 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 700B done
+#6 DONE 0.0s
+
+#7 [4/7] RUN pip install --no-cache-dir -r requirements.txt
+#7 CACHED
+
+#8 [6/7] COPY scripts ./scripts
+#8 CACHED
+
+#9 [2/7] WORKDIR /app
+#9 CACHED
+
+#10 [3/7] COPY requirements.txt ./
+#10 CACHED
+
+#11 [5/7] COPY app ./app
+#11 CACHED
+
+#12 [7/7] RUN useradd -m -u 10001 appuser && chown -R appuser:appuser /app
+#12 CACHED
+
+#13 exporting to image
+#13 exporting layers done
+#13 exporting manifest sha256:a739f93ea4773f43f1dd2dc1854950aed8effc87f04a04053b503b9274e69861 done
+#13 exporting config sha256:092bdaa59832234532c4bedb7aaaff86aeede204ef666bc5a89be811e5ff0999 done
+#13 exporting attestation manifest sha256:70fd3186f5fa26f8f03d22b9bb83a871091f05649d9e4348de4bc299701cf5db done
+#13 exporting manifest list sha256:02fa63872da1f0a7918a175ee18cb29391e166a5ad3fa5c1a15b6adcc745a905 done
+#13 naming to docker.io/library/secdev-seed:latest done
+#13 unpacking to docker.io/library/secdev-seed:latest done
+#13 DONE 0.0s
+
+#14 resolving provenance for metadata file
+#14 DONE 0.0s

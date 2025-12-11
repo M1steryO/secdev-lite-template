@@ -1,0 +1,53 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.60kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.11-slim
+#2 DONE 0.7s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 152B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/library/python:3.11-slim@sha256:7cd0079a9bd8800c81632d65251048fc2848bf9afda542224b1b10e0cae45575
+#4 resolve docker.io/library/python:3.11-slim@sha256:7cd0079a9bd8800c81632d65251048fc2848bf9afda542224b1b10e0cae45575 done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 700B done
+#5 DONE 0.0s
+
+#6 [4/7] RUN pip install --no-cache-dir -r requirements.txt
+#6 CACHED
+
+#7 [6/7] COPY scripts ./scripts
+#7 CACHED
+
+#8 [3/7] COPY requirements.txt ./
+#8 CACHED
+
+#9 [2/7] WORKDIR /app
+#9 CACHED
+
+#10 [5/7] COPY app ./app
+#10 CACHED
+
+#11 [7/7] RUN useradd -m -u 10001 appuser && chown -R appuser:appuser /app
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:61070164622c034396d53afd8d10b825fcbe3a498ba0248d49af1e01bc27e453 done
+#12 exporting config sha256:3d0572743ce87dd5b15fdfc14cfa486b9efb6524a8622df79130bcc41a91d806 done
+#12 exporting attestation manifest sha256:2d7378f97802b5bf841dbbbf2b58fe1cc37dd36f640eb833475eccfb2433759e done
+#12 exporting manifest list sha256:4728287ce7b51f2c4051bc01c462c267e370c86ce5fbe7696b08c90135fd13f1 done
+#12 naming to docker.io/library/secdev-seed:latest done
+#12 unpacking to docker.io/library/secdev-seed:latest done
+#12 DONE 0.1s
+
+ [33m1 warning found (use docker --debug to expand):
+[0m - JSONArgsRecommended: JSON arguments recommended for CMD to prevent unintended behavior related to OS signals (line 28)
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/rjvz97kbkb32n7jzjhac3mtcf
